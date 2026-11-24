@@ -3,6 +3,8 @@
 A single-page interactive tool that estimates what certificate of insurance requests cost an
 agency each month. Built as a lead magnet.
 
+**Live:** https://certificate-workload-check-pavbp6.freebuff.site
+
 ## Run it
 
 No build step. Open `index.html`, or serve the folder:
@@ -32,3 +34,13 @@ Every answer writes progress to `localStorage` (`coi-check.v1.progress`, plus a
 
 `deliverReport()` in `app.js` is the single place to wire up later: post the payload, generate the
 PDF and send the email. It resolves on its own for now.
+
+## Deploying
+
+```
+./build.sh
+```
+
+This copies the three public files into `dist/`, which is what `deploy.json` uploads. The live site
+is a published Freebuff Sites project: publishing from this workspace is what makes changes go
+live, so a commit to this repo alone does not update the URL above.
