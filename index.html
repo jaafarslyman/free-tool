@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Certificate Workload Check</title>
+<meta name="description" content="See what certificate of insurance requests cost your agency each month. Six taps, under a minute." />
+<meta name="theme-color" content="#ffffff" />
+<meta name="robots" content="noindex" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<main class="shell">
+  <div class="card" id="card">
+
+    <nav class="progress" id="progress" aria-label="Progress"></nav>
+
+    <div class="stage" id="stage">
+
+      <section class="panel is-active" data-step="0" aria-labelledby="h0">
+        <h1 class="title" id="h0" tabindex="-1">Find out what certificate requests cost your agency.</h1>
+        <p class="lede">6 taps, under a minute.</p>
+        <form class="form" id="start-form" novalidate>
+          <label class="sr-only" for="first-name">First name</label>
+          <input class="input" id="first-name" type="text" name="firstName" placeholder="First name"
+                 autocomplete="given-name" autocapitalize="words" spellcheck="false"
+                 enterkeyhint="go" maxlength="40" />
+          <p class="err" id="name-err" hidden>Please add your first name.</p>
+          <button class="btn" id="start-btn" type="submit" disabled>Start the check</button>
+        </form>
+      </section>
+
+      <section class="panel" data-step="1" aria-labelledby="h1">
+        <h2 class="q" id="h1" tabindex="-1">How many certificate requests come in each week?</h2>
+        <div class="options" role="group" aria-labelledby="h1">
+          <button class="opt" type="button" data-field="requests" data-value="lt10">
+            <span class="opt-label">Under 10</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="requests" data-value="r1025">
+            <span class="opt-label">10&ndash;25</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="requests" data-value="r2550">
+            <span class="opt-label">25&ndash;50</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="requests" data-value="gt50">
+            <span class="opt-label">50+</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" data-step="2" aria-labelledby="h2">
+        <h2 class="q" id="h2" tabindex="-1">About how many minutes does each one take?</h2>
+        <div class="options" role="group" aria-labelledby="h2">
+          <button class="opt" type="button" data-field="minutes" data-value="m10">
+            <span class="opt-label">Under 10</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="minutes" data-value="m1020">
+            <span class="opt-label">10&ndash;20</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="minutes" data-value="m2030">
+            <span class="opt-label">20&ndash;30</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="minutes" data-value="m30">
+            <span class="opt-label">30+</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" data-step="3" aria-labelledby="h3">
+        <h2 class="q" id="h3" tabindex="-1">How often does one need redoing?</h2>
+        <div class="options" role="group" aria-labelledby="h3">
+          <button class="opt" type="button" data-field="redo" data-value="rarely">
+            <span class="opt-label">Rarely</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="redo" data-value="sometimes">
+            <span class="opt-label">Sometimes</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="redo" data-value="often">
+            <span class="opt-label">Often</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" data-step="4" aria-labelledby="h4">
+        <h2 class="q" id="h4" tabindex="-1">Who handles them most of the time?</h2>
+        <div class="options" role="group" aria-labelledby="h4">
+          <button class="opt" type="button" data-field="handler" data-value="csr">
+            <span class="opt-label">A CSR</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="handler" data-value="am">
+            <span class="opt-label">An account manager</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="handler" data-value="producer">
+            <span class="opt-label">A producer</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="handler" data-value="owner">
+            <span class="opt-label">The owner</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" data-step="5" aria-labelledby="h5">
+        <h2 class="q" id="h5" tabindex="-1">Which management system do you use?</h2>
+        <div class="options" role="group" aria-labelledby="h5">
+          <button class="opt" type="button" data-field="system" data-value="epic">
+            <span class="opt-label">Applied Epic</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="system" data-value="hawksoft">
+            <span class="opt-label">HawkSoft</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="system" data-value="ezlynx">
+            <span class="opt-label">EZLynx</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="system" data-value="nowcerts">
+            <span class="opt-label">NowCerts</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+          <button class="opt" type="button" data-field="system" data-value="other">
+            <span class="opt-label">Other</span>
+            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" data-step="6" aria-labelledby="h6">
+        <p class="eyebrow">Estimated cost</p>
+        <p class="big"><span id="r-cost">$0</span><span class="big-unit">/month</span></p>
+        <p class="sub" id="r-sub">&nbsp;</p>
+
+        <div class="rate">
+          <div class="rate-head">
+            <label for="rate">Hourly rate</label>
+            <output id="rate-out" for="rate">$30</output>
+          </div>
+          <input class="range" id="rate" type="range" min="15" max="85" step="1" value="30"
+                 aria-describedby="rate-hint" />
+          <p class="hint" id="rate-hint">Loaded cost of the person handling requests.</p>
+        </div>
+
+        <div class="break" id="r-break"></div>
+
+        <button class="btn" id="to-report" type="button">Get my printable report</button>
+        <p class="fine">An estimate from your answers, not a quote.</p>
+      </section>
+
+      <section class="panel" data-step="7" aria-labelledby="h7">
+        <h2 class="q" id="h7" tabindex="-1">Where should we send your report?</h2>
+        <p class="lede">A printable PDF with the full monthly breakdown.</p>
+        <form class="form" id="report-form" novalidate>
+          <label class="sr-only" for="email">Work email</label>
+          <input class="input" id="email" type="email" name="email" placeholder="Work email"
+                 autocomplete="email" inputmode="email" spellcheck="false" enterkeyhint="next" />
+          <label class="sr-only" for="agency">Agency name</label>
+          <input class="input" id="agency" type="text" name="agency" placeholder="Agency name"
+                 autocomplete="organization" autocapitalize="words" spellcheck="false" maxlength="80"
+                 enterkeyhint="send" />
+          <p class="err" id="report-err" hidden></p>
+          <button class="btn" id="report-btn" type="submit">Send my report</button>
+        </form>
+        <p class="fine">Your PDF comes by email. Nothing else.</p>
+      </section>
+
+      <section class="panel" data-step="8" aria-labelledby="h8">
+        <div class="done-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg>
+        </div>
+        <h2 class="q" id="h8" tabindex="-1">You&rsquo;re all set.</h2>
+        <p class="lede" id="done-text">Your report is on its way.</p>
+        <p class="fine">If it hasn&rsquo;t arrived in a few minutes, check your spam folder.</p>
+      </section>
+
+    </div>
+
+    <div class="foot">
+      <button class="back" id="back" type="button" aria-label="Back to the previous step">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6 8.5 12l6 6"/></svg>
+      </button>
+      <span class="counter" id="counter" aria-live="polite"></span>
+    </div>
+
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
