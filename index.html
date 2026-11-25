@@ -157,13 +157,13 @@
 
         <div class="break" id="r-break"></div>
 
-        <button class="btn" id="to-report" type="button">Get my printable report</button>
+        <button class="btn" id="to-report" type="button">Get my report</button>
         <p class="fine">An estimate from your answers, not a quote.</p>
       </section>
 
       <section class="panel" data-step="7" aria-labelledby="h7">
         <h2 class="q" id="h7" tabindex="-1">One step before your report.</h2>
-        <p class="lede">Your work email and agency name, and the printable report opens below.</p>
+        <p class="lede">Your work email and agency name, and your two-page report is emailed to you.</p>
         <form class="form" id="report-form" novalidate>
           <label class="sr-only" for="email">Work email</label>
           <input class="input" id="email" type="email" name="email" placeholder="Work email"
@@ -173,57 +173,19 @@
                  autocomplete="organization" autocapitalize="words" spellcheck="false" maxlength="80"
                  enterkeyhint="send" />
           <p class="err" id="report-err" hidden></p>
-          <button class="btn" id="report-btn" type="submit">Get my report</button>
+          <button class="btn" id="report-btn" type="submit">Send my report</button>
         </form>
-        <p class="fine">Used to build this report only. No list, no sequence.</p>
+        <p class="fine">Used to build and send this report only. No list, no sequence.</p>
       </section>
 
       <section class="panel" data-step="8" aria-labelledby="h8">
-        <h2 class="sr-only" id="h8" tabindex="-1">Your certificate workload report</h2>
-
-        <article class="rep" id="report">
-          <div class="rep-page">
-            <h3 class="rep-title">Certificate Workload Report for <span id="rep-agency"></span></h3>
-            <p class="rep-meta" id="rep-meta"></p>
-
-            <p class="rep-headline" id="rep-headline"></p>
-
-            <h4 class="rep-h">Your answers</h4>
-            <table class="rep-table">
-              <tbody id="rep-table"></tbody>
-            </table>
-
-            <h4 class="rep-h">How we calculated it</h4>
-            <p class="rep-note" id="rep-calc"></p>
-          </div>
-
-          <div class="rep-page rep-page-2">
-            <h3 class="rep-title">What it means</h3>
-
-            <h4 class="rep-h">Where the time usually goes</h4>
-            <ul class="rep-list">
-              <li>Requests arrive missing a detail &mdash; the certificate holder&rsquo;s full name and address, the additional insured wording, or the dates. Someone has to go back to the requester or the insured before anything can be issued.</li>
-              <li>The certificate goes out with the wrong limits, entity name or address, and the whole thing is reissued. That is the round trip that never shows up on a timesheet.</li>
-              <li>Chasing the answer &mdash; following up with the insured, the lender or the certificate holder, often more than once, before the request can be closed.</li>
-            </ul>
-
-            <h4 class="rep-h">What 10 hours back would mean</h4>
-            <p class="rep-note" id="rep-ten"></p>
-
-            <div class="rep-next">
-              <p class="rep-next-k">Next step</p>
-              <p>Want to see what AI extracts from your real requests? Send 10 past requests with names removed and I&rsquo;ll send back what it finds, free.</p>
-              <p class="rep-next-who"><span id="rep-who"></span> &middot; <a id="rep-mail" href="mailto:"></a></p>
-            </div>
-
-            <p class="rep-foot" id="rep-foot"></p>
-          </div>
-        </article>
-
-        <div class="rep-actions">
-          <button class="btn" id="print-btn" type="button">Print or save as PDF</button>
-          <p class="fine">Two A4 pages. Choose &ldquo;Save as PDF&rdquo; in the print dialog.</p>
+        <div class="done-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.6 4.6 4.6L19 7.4"/></svg>
         </div>
+        <h2 class="q" id="h8" tabindex="-1">That&rsquo;s it &mdash; your report is on the way.</h2>
+        <p class="lede" id="done-lede">Your two-page report is being emailed to <b id="done-email"></b> now. It usually arrives within a minute.</p>
+        <p class="fine" id="done-fine">An estimate from your answers, not a quote. If it doesn&rsquo;t arrive, check your spam folder.</p>
+        <p class="fine" id="done-dl-wrap" hidden><a id="done-dl" href="#" download>Download your report as a PDF</a></p>
       </section>
 
     </div>

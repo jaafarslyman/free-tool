@@ -17,7 +17,8 @@ python3 -m http.server 3000
 
 - `index.html` — the screens: welcome, five questions, results, email gate, confirmation
 - `styles.css` — monochrome design, mobile-first
-- `app.js` — step state, answer midpoints, the calculation, and data capture
+- `app.js` — step state, answer midpoints, the calculation, the PDF, and data capture
+- `apps-script/Code.gs` — the receiver: writes the sheet row and emails the report
 
 ## How the estimate works
 
@@ -26,14 +27,18 @@ redo time (a share of that base: 10% rarely, 25% sometimes, 50% often). Monthly 
 hours × 4.33. Monthly cost is monthly hours × the hourly rate, which starts at $30 and is
 adjustable on the results screen. Results are always labelled as estimates.
 
-## Data
+## What happens on submit
 
-Every answer writes progress to `localStorage` (`coi-check.v1.progress`, plus a
-`coi-check.v1.events` log), so partial runs are captured. Completed submissions are appended to
-`coi-check.v1.submissions` with name, email, agency, all answers, computed results and timestamps.
+Nothing is displayed: the visitor gets a confirmation screen that says the report is on its way.
 
-On submit the payload is posted to a Google Apps Script web app, which appends one row to the
-"COI Workload Check — Submissions" sheet:
+In the background `app.js` renders a two-page A4 PDF from the answers and results (a small PDF
+writer built into the file — no library, no server), then posts one JSON body to the Apps Script
+receiver: answers, results, timestamps, session id, and the PDF as base64.
+
+The receiver appends one row to the "COI Workload Check — Submissions" sheet and emails the PDF
+to the address the visitor gave, from the owner's own Gmail, with the owner as reply-to. If a step
+fails it returns `ok: false`, and the page then offers the same PDF as a download so nobody is
+left without their report.
 
 | Column | |
 | --- | --- |
@@ -42,24 +47,32 @@ On submit the payload is posted to a Google Apps Script web app, which appends o
 | E–I | Requests per week, minutes each, redos, handled by, management system (the labels chosen) |
 | J–M | Weekly hours, monthly hours, hourly rate, monthly cost |
 | N–O | Session ID, start time |
+| P | Report emailed (`yes` / `no`) |
 
-The report only opens once that write succeeds. If `SHEET_ENDPOINT` is empty the tool still runs
-end to end, but nothing leaves the browser.
+Progress is also written to `localStorage` on every answer (`coi-check.v1.progress`, plus a
+`coi-check.v1.events` log), and the finished payload is kept in `coi-check.v1.submissions`.
 
-### Turning saving on (once)
+### Turning saving and email on (once)
+
+The page cannot sign in to Google, so it needs one published receiver. This is the only setup
+step, and it switches on both the sheet and the email.
 
 1. Open the sheet, then **Extensions → Apps Script**.
 2. Delete the stub and paste the contents of `apps-script/Code.gs`.
 3. **Deploy → New deployment → Web app.** Execute as *Me*, Who has access *Anyone*.
-4. Copy the `/exec` URL into `SHEET_ENDPOINT` at the top of `app.js`.
-5. `./build.sh` and publish again.
+4. Authorise it the first time Google asks.
+5. Copy the `/exec` URL into `SHEET_ENDPOINT` at the top of `app.js`.
+6. `./build.sh` and publish again.
+
+Until step 5 is done `SHEET_ENDPOINT` is empty, so nothing can be stored or emailed and the
+confirmation screen falls back to a download link.
 
 ## The report
 
-After the email gate the tool builds a two-page A4 report from the stored submission and offers
-**Print or save as PDF**: page one has the headline number, the answers as a table and the
-calculation; page two has where the time usually goes, what ten hours back would mean, and the
-next-step box. Everything is black on white and prints readably in greyscale.
+Two A4 pages, black on white, readable in greyscale. Page one: the headline number, the five
+answers as a small table, and how it was calculated (including the hourly-rate assumption and the
+word "estimate"). Page two: where the time usually goes, what 10 hours back would mean for their
+numbers, and a box with the next step and the owner's name and email.
 
 ## Deploying
 
