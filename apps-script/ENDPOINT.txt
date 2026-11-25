@@ -1,0 +1,13 @@
+SHEET_ENDPOINT — the receiver URL for app.js
+
+Paste this line into app.js in place of the empty SHEET_ENDPOINT, then run ./build.sh.
+The live copy already has it.
+
+  var SHEET_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzExTkkN5yw_60vIA5xstDdn7QDUy4s6Z_mmdC3Pow1kmzNsIwhf5WOgf9bekRt0agr/exec';
+
+Health check (open in a browser): the same URL should answer
+
+  {"ok":true,"service":"certificate-workload-check","sheet":"COI Workload Check — Submissions","rows":N}
+
+If it answers with an Exception instead, the script's Google account no longer has access to
+the spreadsheet — share the sheet with that account as Editor.
