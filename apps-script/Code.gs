@@ -1,16 +1,23 @@
 /**
  * Certificate Workload Check — submission receiver.
  *
- * Bound to the "COI Workload Check — Submissions" sheet. The tool posts one JSON body per
- * finished run: the answers, the results, and the two-page PDF (base64). This appends the row
- * and emails that PDF to the address the visitor gave.
+ * Receives the JSON the tool posts after someone finishes: the answers, the results, and the
+ * two-page PDF (base64). Appends one row to the submissions sheet and emails the PDF to the
+ * address the visitor gave.
  *
- * Setup is in the README (Extensions -> Apps Script, paste this, deploy as a web app).
+ * Runs either way:
+ *  - inside the sheet (Extensions -> Apps Script): leave SHEET_ID empty;
+ *  - standalone (script.google.com -> New project): set SHEET_ID to the sheet's id.
  */
 
+var SHEET_ID = '';  // only needed for a standalone script, e.g. '1I5UP_qAr7uwUKUn...'
 var SHEET_NAME = 'Sheet1';
 var OWNER_NAME = 'Jaafar Slyman';
 var OWNER_EMAIL = 'jaafarslyman85@gmail.com';
+
+function openBook() {
+  return SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+}
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
@@ -20,7 +27,7 @@ function doPost(e) {
     var data = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!data.email) return json({ ok: false, error: 'missing email' });
 
-    var book = SpreadsheetApp.getActiveSpreadsheet();
+    var book = openBook();
     var sheet = book.getSheetByName(SHEET_NAME) || book.getSheets()[0];
 
     var a = data.answers || {};
@@ -103,7 +110,7 @@ function sendReport(data) {
 }
 
 function doGet() {
-  var book = SpreadsheetApp.getActiveSpreadsheet();
+  var book = openBook();
   var sheet = book.getSheetByName(SHEET_NAME) || book.getSheets()[0];
   return json({
     ok: true,
