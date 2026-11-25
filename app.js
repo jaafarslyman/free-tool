@@ -102,7 +102,13 @@
   var agencyInput = document.getElementById('agency');
   var reportErr = document.getElementById('report-err');
   var reportBtn = document.getElementById('report-btn');
-  var printBtn = document.getElementById('print-btn');
+
+  var doneTitle = document.getElementById('h8');
+  var doneLede = document.getElementById('done-lede');
+  var doneEmail = document.getElementById('done-email');
+  var doneFine = document.getElementById('done-fine');
+  var doneDl = document.getElementById('done-dl');
+  var doneDlWrap = document.getElementById('done-dl-wrap');
 
   var panels = Array.prototype.slice
     .call(document.querySelectorAll('.panel'))
@@ -371,66 +377,243 @@
     state.agency = agency;
 
     reportBtn.disabled = true;
-    reportBtn.textContent = 'Saving\u2026';
+    reportBtn.textContent = 'Sending\u2026';
 
     var payload = buildPayload();
     saveSubmission(payload);
 
-    deliverReport(payload).then(function () {
+    /* The report is made here, in the background, and posted with the submission so the
+       receiver can store the row and email the attachment. Nothing is shown on screen. */
+    var pdf = null;
+    try {
+      pdf = buildReportPdf(payload);
+      track('pdf_built', { sessionId: state.sessionId, bytes: pdf.length });
+    } catch (err) {
+      pdf = null;
+      track('pdf_failed', { sessionId: state.sessionId, error: String(err) });
+    }
+
+    deliverReport(payload, pdf).then(function () {
       state.submitted = true;
       track('submit', payload);
-      renderReport(payload);
-      setStep(8);
-    }).catch(function () {
-      reportBtn.disabled = false;
-      reportBtn.textContent = 'Get my report';
-      reportErr.textContent = 'We couldn\u2019t save that just now. Please try again.';
-      reportErr.hidden = false;
+      showSent(payload, null, true);
+    }, function (err) {
+      state.submitted = true;
+      track('submit_unsent', {
+        sessionId: state.sessionId,
+        reason: String((err && err.message) || err)
+      });
+      showSent(payload, pdf, false);
     });
   });
 
-  /* ---------- printable report ---------- */
+  /* ---------- the PDF: built quietly, emailed by the receiver ---------- */
 
-  function renderReport(p) {
-    var c = calc();
+  var PDF_W = 595.28;
+  var PDF_H = 841.89;
+  var PDF_M = 48;
+  var PDF_INNER = PDF_W - PDF_M * 2;
+
+  var WIN_ANSI = {
+    '\u2018': 0x91, '\u2019': 0x92, '\u201c': 0x93, '\u201d': 0x94,
+    '\u2013': 0x96, '\u2014': 0x97, '\u2026': 0x85, '\u00b7': 0xb7,
+    '\u00b0': 0xb0, '\u00a0': 0x20, '\u2022': 0x95
+  };
+
+  var TIME_POINTS = [
+    'Requests arrive missing a detail \u2014 the certificate holder\u2019s full name and address, the additional insured wording, or the dates. Someone has to go back to the requester or the insured before anything can be issued.',
+    'The certificate goes out with the wrong limits, entity name or address, and the whole thing is reissued. That is the round trip that never shows up on a timesheet.',
+    'Chasing the answer \u2014 following up with the insured, the lender or the certificate holder, often more than once, before the request can be closed.'
+  ];
+
+  var measureCanvas = null;
+
+  function pdfText(str) {
+    var out = '';
+    for (var i = 0; i < str.length; i++) {
+      var code = str.charCodeAt(i);
+      var mapped = WIN_ANSI[str.charAt(i)];
+      if (mapped) out += String.fromCharCode(mapped);
+      else if (code >= 32 && code < 127) out += str.charAt(i);
+      else out += '?';
+    }
+    return out.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  }
+
+  function pdfWidth(str, size, bold) {
+    if (!measureCanvas) measureCanvas = document.createElement('canvas');
+    var ctx = measureCanvas.getContext('2d');
+    ctx.font = (bold ? 'bold ' : '') + size + 'px Arial, Helvetica, sans-serif';
+    return ctx.measureText(str).width;
+  }
+
+  function wrapText(str, size, bold, maxWidth) {
+    var words = String(str).split(/\s+/);
+    var lines = [];
+    var line = '';
+    for (var i = 0; i < words.length; i++) {
+      var test = line ? line + ' ' + words[i] : words[i];
+      if (!line || pdfWidth(test, size, bold) <= maxWidth) line = test;
+      else { lines.push(line); line = words[i]; }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function Page() {
+    this.ops = [];
+    this.y = PDF_H - 56;
+    this.content = function () { return this.ops.join('\n'); };
+  }
+
+  Page.prototype.text = function (str, o) {
+    o = o || {};
+    var size = o.size || 10.5;
+    var bold = !!o.bold;
+    var gray = typeof o.gray === 'number' ? o.gray : 0;
+    var x = typeof o.x === 'number' ? o.x : PDF_M;
+    var y = typeof o.y === 'number' ? o.y : this.y;
+    var track = typeof o.track === 'number' ? ' ' + o.track + ' Tc' : '';
+    this.ops.push('BT /' + (bold ? 'F2' : 'F1') + ' ' + size + ' Tf' + track + ' ' +
+      gray.toFixed(3) + ' g 1 0 0 1 ' + x.toFixed(2) + ' ' + y.toFixed(2) + ' Tm (' +
+      pdfText(str) + ') Tj ET');
+  };
+
+  Page.prototype.block = function (str, o) {
+    o = o || {};
+    var size = o.size || 10.5;
+    var bold = !!o.bold;
+    var lh = o.lh || size * 1.5;
+    var indent = o.indent || 0;
+    var lines = wrapText(str, size, bold, PDF_INNER - indent);
+    for (var i = 0; i < lines.length; i++) {
+      if (i) this.y -= lh;
+      this.text(lines[i], { size: size, bold: bold, gray: o.gray, x: PDF_M + indent });
+    }
+    this.y -= lh;
+  };
+
+  Page.prototype.heading = function (str, size) {
+    var lines = wrapText(str, size, true, PDF_INNER);
+    for (var i = 0; i < lines.length; i++) {
+      if (i) this.y -= size * 1.22;
+      this.text(lines[i], { size: size, bold: true });
+    }
+    this.y -= size * 1.45;
+  };
+
+  Page.prototype.section = function (label) {
+    this.text(label.toUpperCase(), { size: 8, bold: true, gray: 0.45, track: 1.1 });
+    this.y -= 19;
+  };
+
+  Page.prototype.rule = function (gray, gap) {
+    var y = (this.y + (gap || 0)).toFixed(2);
+    this.ops.push((gray || 0.85).toFixed(3) + ' G 0.7 w ' + PDF_M + ' ' + y + ' m ' +
+      (PDF_W - PDF_M).toFixed(2) + ' ' + y + ' l S');
+  };
+
+  function buildReportPdf(p) {
     var r = p.results;
     var a = p.answers;
     var when = new Date(p.timestamp);
 
-    el('rep-agency').textContent = p.agency;
-    el('rep-meta').textContent = MONTHS[when.getMonth()] + ' ' + when.getDate() + ', ' +
-      when.getFullYear() + ' \u00b7 Prepared for ' + p.name;
+    /* ---- page one ---- */
+    var one = new Page();
+    one.heading('Certificate Workload Report for ' + p.agency, 18);
+    one.text(MONTHS[when.getMonth()] + ' ' + when.getDate() + ', ' + when.getFullYear() +
+      ' \u00b7 Prepared for ' + p.name, { size: 9.5, gray: 0.4 });
+    one.y -= 14;
+    one.rule(0.82);
+    one.y -= 40;
 
-    el('rep-headline').innerHTML = 'About <b>' + Math.round(r.monthlyHours) +
-      ' hours</b> a month, roughly <b>' + money(r.monthlyCost) + '</b>';
+    one.text('About ' + Math.round(r.monthlyHours) + ' hours a month,', { size: 19, gray: 0.25 });
+    one.y -= 36;
+    one.text('roughly ' + money(r.monthlyCost), { size: 30, bold: true });
+    one.y -= 52;
+
+    one.section('Your answers');
 
     var rows = [
-      ['Certificate requests per week', a.requestsPerWeek.label],
-      ['Minutes per request', a.minutesEach.label],
-      ['How often one needs redoing', a.redos.label],
-      ['Who handles them', a.handledBy.label],
-      ['Management system', a.managementSystem.label]
+      ['Certificate requests per week', a.requestsPerWeek.label || ''],
+      ['Minutes per request', a.minutesEach.label || ''],
+      ['How often one needs redoing', a.redos.label || ''],
+      ['Who handles them', a.handledBy.label || ''],
+      ['Management system', a.managementSystem.label || '']
     ];
 
-    el('rep-table').innerHTML = rows.map(function (item) {
-      return '<tr><th scope="row">' + item[0] + '</th><td>' + item[1] + '</td></tr>';
-    }).join('');
+    rows.forEach(function (item) {
+      one.text(item[0], { size: 10.5, gray: 0.3 });
+      one.text(item[1], { size: 10.5, bold: true, x: PDF_W - PDF_M - pdfWidth(item[1], 10.5, true) });
+      one.y -= 8;
+      one.rule(0.87);
+      one.y -= 16;
+    });
 
-    el('rep-calc').innerHTML =
-      count(c.requests) + ' requests a week at ' + count(c.minutes) + ' minutes each is about ' +
-      hrs(c.baseWeekly) + ' hours, plus ' + hrs(c.redoWeekly) + ' hours for redos. That is ' +
-      hrs(r.monthlyHours) + ' hours a month, and at $' + r.hourlyRate +
-      ' an hour it comes to <b>' + money(r.monthlyCost) + '</b>.<br /><br />' +
-      'Everything here is an estimate built from your answers \u2014 not a quote, and not an ' +
-      'industry benchmark.';
+    one.y -= 14;
+    one.section('How this was calculated');
+    one.block(count(r.requestsPerWeek) + ' requests a week at ' + count(r.minutesEach) +
+      ' minutes each is about ' + hrs(r.baseWeeklyHours) + ' hours, plus ' +
+      hrs(r.redoWeeklyHours) + ' hours for redos. That is ' +
+      hrs(r.monthlyHours) + ' hours a month, and at $' + r.hourlyRate + ' an hour it comes to ' +
+      money(r.monthlyCost) + '.', { size: 10.5, lh: 15.5, gray: 0.1 });
+    one.y -= 6;
+    one.block('Everything above is an estimate built from the five answers given \u2014 not a quote, ' +
+      'and not an industry benchmark. Change the hourly rate to see it at your own loaded cost.',
+      { size: 10.5, lh: 15.5, gray: 0.4 });
 
-    el('rep-ten').textContent = tenHoursText(r.monthlyHours);
+    pageFooter(one);
 
-    el('rep-who').textContent = BRAND.name;
-    var mail = el('rep-mail');
-    mail.textContent = BRAND.email;
-    mail.href = 'mailto:' + BRAND.email;
-    el('rep-foot').textContent = BRAND.name + ' \u00b7 ' + BRAND.email;
+    /* ---- page two ---- */
+    var two = new Page();
+    two.heading('What it means', 18);
+    two.y -= 8;
+
+    two.section('Where the time usually goes');
+    TIME_POINTS.forEach(function (point) {
+      var lines = wrapText(point, 10.5, false, PDF_INNER - 16);
+      for (var i = 0; i < lines.length; i++) {
+        if (i === 0) two.text('\u2022', { size: 10.5, gray: 0.45 });
+        two.text(lines[i], { size: 10.5, gray: 0.1, x: PDF_M + 16 });
+        two.y -= 15.5;
+      }
+      two.y -= 10;
+    });
+
+    two.y -= 12;
+    two.section('What 10 hours back would mean');
+    two.block(tenHoursText(r.monthlyHours), { size: 10.5, lh: 15.5, gray: 0.1 });
+
+    /* next-step box */
+    var boxBody = 'Want to see what AI extracts from your real requests? Send 10 past requests ' +
+      'with names removed and I\u2019ll send back what it finds, free.';
+    var who = BRAND.name + ' \u00b7 ' + BRAND.email;
+    var pad = 18;
+    var bodyLines = wrapText(boxBody, 10.5, false, PDF_INNER - pad * 2);
+    var top = two.y + 6;
+    var labelY = top - pad - 8;
+    var bodyY = labelY - 22;
+    var whoY = bodyY - (bodyLines.length - 1) * 15.5 - 18;
+    var bottom = whoY - 8;
+    var boxH = top - bottom;
+
+    two.ops.push('0.9 w 0 g ' + PDF_M + ' ' + bottom.toFixed(2) + ' ' + PDF_INNER.toFixed(2) + ' ' +
+      boxH.toFixed(2) + ' re S');
+    two.text('NEXT STEP', { size: 8, bold: true, y: labelY, track: 1.1 });
+    bodyLines.forEach(function (line, i) {
+      two.text(line, { size: 10.5, gray: 0.1, y: bodyY - i * 15.5 });
+    });
+    two.text(who, { size: 10.5, bold: true, y: whoY });
+    two.y = bottom - 24;
+
+    pageFooter(two);
+
+    return makePdf([one.content(), two.content()]);
+  }
+
+  function pageFooter(page) {
+    page.text(BRAND.name + ' \u00b7 ' + BRAND.email, { size: 8.5, gray: 0.45, y: 62 });
+    page.ops.push('0.87 G 0.7 w ' + PDF_M + ' 74 m ' + (PDF_W - PDF_M).toFixed(2) + ' 74 l S');
   }
 
   function tenHoursText(monthly) {
@@ -445,7 +628,93 @@
       'to three working weeks \u2014 enough to protect renewals or keep new business moving.';
   }
 
+  function makePdf(contents) {
+    var count = contents.length;
+    var total = 4 + count * 2;
+    var bodies = {};
+    var kids = [];
+    var i;
+
+    for (i = 0; i < count; i++) kids.push((5 + i * 2) + ' 0 R');
+
+    bodies[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    bodies[2] = '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + count + ' >>';
+    bodies[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    bodies[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+
+    for (i = 0; i < count; i++) {
+      var pageObj = 5 + i * 2;
+      var contentObj = pageObj + 1;
+      bodies[pageObj] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PDF_W + ' ' + PDF_H + ']' +
+        ' /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' + contentObj + ' 0 R >>';
+      bodies[contentObj] = '<< /Length ' + contents[i].length + ' >>\nstream\n' + contents[i] +
+        '\nendstream';
+    }
+
+    var bytes = [];
+    function push(str) {
+      for (var j = 0; j < str.length; j++) bytes.push(str.charCodeAt(j) & 0xff);
+    }
+
+    var offsets = [];
+    push('%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n');
+    for (var n = 1; n <= total; n++) {
+      offsets[n] = bytes.length;
+      push(n + ' 0 obj\n' + bodies[n] + '\nendobj\n');
+    }
+
+    var startxref = bytes.length;
+    push('xref\n0 ' + (total + 1) + '\n0000000000 65535 f \n');
+    for (n = 1; n <= total; n++) {
+      push(('0000000000' + offsets[n]).slice(-10) + ' 00000 n \n');
+    }
+    push('trailer\n<< /Size ' + (total + 1) + ' /Root 1 0 R >>\nstartxref\n' + startxref +
+      '\n%%EOF\n');
+
+    return new Uint8Array(bytes);
+  }
+
+  function toBase64(bytes) {
+    var chunk = 0x8000;
+    var out = '';
+    for (var i = 0; i < bytes.length; i += chunk) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return window.btoa(out);
+  }
+
+  function pdfFileName(p) {
+    var slug = String(p.agency || 'agency').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    return 'certificate-workload-report-' + (slug || 'agency') + '.pdf';
+  }
+
   function el(id) { return document.getElementById(id); }
+
+  /* The visitor never sees the report on screen: it is emailed. If the send fails we
+     hand them the same file to download, so nobody is left without their report. */
+  function showSent(payload, pdf, sent) {
+
+    doneEmail.textContent = payload.email;
+    doneTitle.textContent = sent
+      ? 'That\u2019s it \u2014 your report is on the way.'
+      : 'Your report is ready.';
+    doneLede.textContent = sent
+      ? 'Your two-page report is being emailed now. It usually lands within a minute \u2014 if it is not there, check your spam folder.'
+      : 'The email did not go through just now. Download your two-page report below \u2014 it is built from the answers you just gave.';
+    doneFine.textContent = sent
+      ? 'An estimate from your answers, not a quote.'
+      : 'An estimate from your answers, not a quote.';
+
+    if (pdf) {
+      var blob = new Blob([pdf], { type: 'application/pdf' });
+      doneDl.href = URL.createObjectURL(blob);
+      doneDl.download = pdfFileName(payload);
+      doneDlWrap.hidden = false;
+    }
+
+    setStep(8);
+  }
 
   /* ---------- payload & data capture ---------- */
 
@@ -485,7 +754,11 @@
         weeklyHours: round(c.weekly),
         monthlyHours: round(c.monthly),
         hourlyRate: state.rate,
-        monthlyCost: Math.round(c.cost)
+        monthlyCost: Math.round(c.cost),
+        requestsPerWeek: c.requests,
+        minutesEach: c.minutes,
+        baseWeeklyHours: round(c.baseWeekly),
+        redoWeeklyHours: round(c.redoWeekly)
       },
       startedAt: state.startedAt,
       timestamp: new Date().toISOString()
@@ -547,35 +820,38 @@
     return 'cwc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
-  /* Save the submission first. The report only opens once the row is stored. */
-  function deliverReport(payload) {
+  /* Posts the submission and the attached report to the receiver, which stores the row and
+     emails the PDF. Resolves only when both happened; rejects so the page can hand over the
+     file instead. */
+  function deliverReport(payload, pdf) {
     if (!SHEET_ENDPOINT) {
-      return new Promise(function (resolve) {
-        track('save_skipped', { reason: 'no endpoint' });
-        window.setTimeout(function () { resolve(payload); }, 400);
-      });
+      track('save_skipped', { reason: 'no endpoint' });
+      return Promise.reject(new Error('not-configured'));
+    }
+
+    var body = {};
+    Object.keys(payload).forEach(function (key) { body[key] = payload[key]; });
+    if (pdf) {
+      body.pdf = toBase64(pdf);
+      body.pdfName = pdfFileName(payload);
     }
 
     return fetch(SHEET_ENDPOINT, {
       method: 'POST',
       /* text/plain keeps this a simple request, so there is no CORS preflight */
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(body)
     }).then(function (res) {
-      if (!res.ok) throw new Error('Save failed: ' + res.status);
+      if (!res.ok) throw new Error('Send failed: ' + res.status);
       return res.text();
     }).then(function (text) {
-      var out = null;
+      var out;
       try { out = JSON.parse(text); } catch (err) { out = null; }
-      if (out && out.ok === false) throw new Error(out.error || 'Save failed');
+      if (!out) throw new Error('unexpected reply');
+      if (out.ok === false) throw new Error(out.error || 'send failed');
       return payload;
     });
   }
-
-  printBtn.addEventListener('click', function () {
-    track('report_print', { sessionId: state.sessionId });
-    window.print();
-  });
 
   /* ---------- init ---------- */
 
