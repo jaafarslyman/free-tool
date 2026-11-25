@@ -32,8 +32,34 @@ Every answer writes progress to `localStorage` (`coi-check.v1.progress`, plus a
 `coi-check.v1.events` log), so partial runs are captured. Completed submissions are appended to
 `coi-check.v1.submissions` with name, email, agency, all answers, computed results and timestamps.
 
-`deliverReport()` in `app.js` is the single place to wire up later: post the payload, generate the
-PDF and send the email. It resolves on its own for now.
+On submit the payload is posted to a Google Apps Script web app, which appends one row to the
+"COI Workload Check — Submissions" sheet:
+
+| Column | |
+| --- | --- |
+| A | Submitted at (ISO) |
+| B–D | First name, email, agency |
+| E–I | Requests per week, minutes each, redos, handled by, management system (the labels chosen) |
+| J–M | Weekly hours, monthly hours, hourly rate, monthly cost |
+| N–O | Session ID, start time |
+
+The report only opens once that write succeeds. If `SHEET_ENDPOINT` is empty the tool still runs
+end to end, but nothing leaves the browser.
+
+### Turning saving on (once)
+
+1. Open the sheet, then **Extensions → Apps Script**.
+2. Delete the stub and paste the contents of `apps-script/Code.gs`.
+3. **Deploy → New deployment → Web app.** Execute as *Me*, Who has access *Anyone*.
+4. Copy the `/exec` URL into `SHEET_ENDPOINT` at the top of `app.js`.
+5. `./build.sh` and publish again.
+
+## The report
+
+After the email gate the tool builds a two-page A4 report from the stored submission and offers
+**Print or save as PDF**: page one has the headline number, the answers as a table and the
+calculation; page two has where the time usually goes, what ten hours back would mean, and the
+next-step box. Everything is black on white and prints readably in greyscale.
 
 ## Deploying
 
