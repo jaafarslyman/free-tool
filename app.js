@@ -10,6 +10,18 @@
   var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   var ADVANCE_MS = 190;
 
+  /* Where a finished submission is saved: the Apps Script web app URL (see README).
+     Left empty, the report is still built in the browser but nothing is stored. */
+  var SHEET_ENDPOINT = '';
+
+  var BRAND = {
+    name: 'Jaafar Slyman',
+    email: 'jaafarslyman85@gmail.com'
+  };
+
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
   /* ---------- answer ranges -> midpoints ---------- */
 
   var CONFIG = {
@@ -90,7 +102,7 @@
   var agencyInput = document.getElementById('agency');
   var reportErr = document.getElementById('report-err');
   var reportBtn = document.getElementById('report-btn');
-  var doneText = document.getElementById('done-text');
+  var printBtn = document.getElementById('print-btn');
 
   var panels = Array.prototype.slice
     .call(document.querySelectorAll('.panel'))
@@ -359,7 +371,7 @@
     state.agency = agency;
 
     reportBtn.disabled = true;
-    reportBtn.textContent = 'Sending\u2026';
+    reportBtn.textContent = 'Saving\u2026';
 
     var payload = buildPayload();
     saveSubmission(payload);
@@ -367,19 +379,73 @@
     deliverReport(payload).then(function () {
       state.submitted = true;
       track('submit', payload);
-      renderConfirmation();
+      renderReport(payload);
       setStep(8);
     }).catch(function () {
       reportBtn.disabled = false;
-      reportBtn.textContent = 'Send my report';
-      reportErr.textContent = 'That didn\u2019t go through. Please try again.';
+      reportBtn.textContent = 'Get my report';
+      reportErr.textContent = 'We couldn\u2019t save that just now. Please try again.';
       reportErr.hidden = false;
     });
   });
 
-  function renderConfirmation() {
-    doneText.textContent = 'Your report is on its way to ' + state.email + '.';
+  /* ---------- printable report ---------- */
+
+  function renderReport(p) {
+    var c = calc();
+    var r = p.results;
+    var a = p.answers;
+    var when = new Date(p.timestamp);
+
+    el('rep-agency').textContent = p.agency;
+    el('rep-meta').textContent = MONTHS[when.getMonth()] + ' ' + when.getDate() + ', ' +
+      when.getFullYear() + ' \u00b7 Prepared for ' + p.name;
+
+    el('rep-headline').innerHTML = 'About <b>' + Math.round(r.monthlyHours) +
+      ' hours</b> a month, roughly <b>' + money(r.monthlyCost) + '</b>';
+
+    var rows = [
+      ['Certificate requests per week', a.requestsPerWeek.label],
+      ['Minutes per request', a.minutesEach.label],
+      ['How often one needs redoing', a.redos.label],
+      ['Who handles them', a.handledBy.label],
+      ['Management system', a.managementSystem.label]
+    ];
+
+    el('rep-table').innerHTML = rows.map(function (item) {
+      return '<tr><th scope="row">' + item[0] + '</th><td>' + item[1] + '</td></tr>';
+    }).join('');
+
+    el('rep-calc').innerHTML =
+      count(c.requests) + ' requests a week at ' + count(c.minutes) + ' minutes each is about ' +
+      hrs(c.baseWeekly) + ' hours, plus ' + hrs(c.redoWeekly) + ' hours for redos. That is ' +
+      hrs(r.monthlyHours) + ' hours a month, and at $' + r.hourlyRate +
+      ' an hour it comes to <b>' + money(r.monthlyCost) + '</b>.<br /><br />' +
+      'Everything here is an estimate built from your answers \u2014 not a quote, and not an ' +
+      'industry benchmark.';
+
+    el('rep-ten').textContent = tenHoursText(r.monthlyHours);
+
+    el('rep-who').textContent = BRAND.name;
+    var mail = el('rep-mail');
+    mail.textContent = BRAND.email;
+    mail.href = 'mailto:' + BRAND.email;
+    el('rep-foot').textContent = BRAND.name + ' \u00b7 ' + BRAND.email;
   }
+
+  function tenHoursText(monthly) {
+    if (monthly >= 12) {
+      return 'You are at ' + hrs(monthly) + ' hours a month. Getting 10 of those hours back is about ' +
+        Math.round(10 / monthly * 100) + '% of the total \u2014 120 hours a year, close to three ' +
+        'working weeks. That is enough to take renewals out of the last week of the month, or to keep ' +
+        'new business moving without pulling someone off service work.';
+    }
+    return 'You are at ' + hrs(monthly) + ' hours a month, so 10 hours back is more than the whole job. ' +
+      'In practice the win is steadier: a few hours back each week is around 120 hours a year \u2014 close ' +
+      'to three working weeks \u2014 enough to protect renewals or keep new business moving.';
+  }
+
+  function el(id) { return document.getElementById(id); }
 
   /* ---------- payload & data capture ---------- */
 
@@ -481,13 +547,35 @@
     return 'cwc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
 
-  /* Hook for later: POST the payload, build the PDF and send the email here.
-     Nothing is sent today, so the confirmation resolves on its own. */
+  /* Save the submission first. The report only opens once the row is stored. */
   function deliverReport(payload) {
-    return new Promise(function (resolve) {
-      window.setTimeout(function () { resolve(payload); }, 550);
+    if (!SHEET_ENDPOINT) {
+      return new Promise(function (resolve) {
+        track('save_skipped', { reason: 'no endpoint' });
+        window.setTimeout(function () { resolve(payload); }, 400);
+      });
+    }
+
+    return fetch(SHEET_ENDPOINT, {
+      method: 'POST',
+      /* text/plain keeps this a simple request, so there is no CORS preflight */
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Save failed: ' + res.status);
+      return res.text();
+    }).then(function (text) {
+      var out = null;
+      try { out = JSON.parse(text); } catch (err) { out = null; }
+      if (out && out.ok === false) throw new Error(out.error || 'Save failed');
+      return payload;
     });
   }
+
+  printBtn.addEventListener('click', function () {
+    track('report_print', { sessionId: state.sessionId });
+    window.print();
+  });
 
   /* ---------- init ---------- */
 
